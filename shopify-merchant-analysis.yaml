@@ -1,0 +1,448 @@
+openapi: 3.1.1
+info:
+  title: Shopify Merchant Analysis Tools
+  description: API tools for analyzing merchants, verifying Shopify usage, and finding similar merchants in specific verticals
+  version: 1.0.0
+  contact:
+    name: Shopify Merchant Analysis Agent
+    description: Tools for comprehensive merchant analysis and Shopify verification
+
+servers:
+  - url: https://api.example.com/v1
+    description: Merchant Analysis API Server
+
+paths:
+  /merchants/search:
+    post:
+      operationId: searchMerchantsByVertical
+      summary: Search for merchants in a specific vertical or segment
+      description: Find merchants similar to a given merchant based on vertical, industry, or business segment
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - vertical
+              properties:
+                vertical:
+                  type: string
+                  description: The business vertical or industry segment to search within
+                  examples: ["fashion", "home-decor", "electronics", "beauty", "sports"]
+                keywords:
+                  type: array
+                  items:
+                    type: string
+                  description: Additional keywords to refine the search
+                  examples: [["sustainable", "eco-friendly"], ["luxury", "premium"]]
+                size_filter:
+                  type: string
+                  enum: ["enterprise", "large", "medium", "small", "all"]
+                  default: "all"
+                  description: Filter merchants by business size
+                limit:
+                  type: integer
+                  minimum: 1
+                  maximum: 50
+                  default: 20
+                  description: Maximum number of merchants to return
+      responses:
+        '200':
+          description: List of merchants found in the specified vertical
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  merchants:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/MerchantInfo'
+                  total_found:
+                    type: integer
+                    description: Total number of merchants found
+                  search_criteria:
+                    type: object
+                    properties:
+                      vertical:
+                        type: string
+                      keywords:
+                        type: array
+                        items:
+                          type: string
+                      size_filter:
+                        type: string
+
+  /merchants/verify-shopify:
+    post:
+      operationId: verifyShopifyUsage
+      summary: Verify if merchants are using Shopify
+      description: Check multiple merchants to determine if they are using Shopify or Shopify Plus
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - merchants
+              properties:
+                merchants:
+                  type: array
+                  items:
+                    type: object
+                    required:
+                      - name
+                    properties:
+                      name:
+                        type: string
+                        description: Merchant name
+                      website:
+                        type: string
+                        format: uri
+                        description: Merchant website URL
+                  description: List of merchants to verify
+                  maxItems: 20
+                verification_depth:
+                  type: string
+                  enum: ["basic", "detailed", "comprehensive"]
+                  default: "detailed"
+                  description: Level of verification to perform
+      responses:
+        '200':
+          description: Verification results for the submitted merchants
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  verified_shopify:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/VerifiedMerchant'
+                    description: Merchants confirmed to be using Shopify
+                  inferred_shopify:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/InferredMerchant'
+                    description: Merchants likely using Shopify based on indicators
+                  non_shopify:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/NonShopifyMerchant'
+                    description: Merchants confirmed not using Shopify
+                  verification_summary:
+                    type: object
+                    properties:
+                      total_checked:
+                        type: integer
+                      verified_count:
+                        type: integer
+                      inferred_count:
+                        type: integer
+                      non_shopify_count:
+                        type: integer
+
+  /merchants/analyze-website:
+    post:
+      operationId: analyzeWebsiteForShopify
+      summary: Analyze a website for Shopify indicators
+      description: Deep analysis of a single website to detect Shopify usage and gather detailed information
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - website_url
+              properties:
+                website_url:
+                  type: string
+                  format: uri
+                  description: The website URL to analyze
+                analysis_type:
+                  type: string
+                  enum: ["quick", "standard", "comprehensive"]
+                  default: "standard"
+                  description: Depth of analysis to perform
+                check_pos:
+                  type: boolean
+                  default: true
+                  description: Whether to check for Shopify POS usage
+      responses:
+        '200':
+          description: Detailed analysis results for the website
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WebsiteAnalysis'
+
+  /merchants/find-similar:
+    post:
+      operationId: findSimilarMerchants
+      summary: Find merchants similar to a given merchant
+      description: Discover merchants in the same vertical or with similar characteristics
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - reference_merchant
+              properties:
+                reference_merchant:
+                  type: object
+                  required:
+                    - name
+                  properties:
+                    name:
+                      type: string
+                      description: Name of the reference merchant
+                    website:
+                      type: string
+                      format: uri
+                      description: Website URL of the reference merchant
+                    vertical:
+                      type: string
+                      description: Known vertical/industry of the reference merchant
+                similarity_criteria:
+                  type: array
+                  items:
+                    type: string
+                    enum: ["vertical", "size", "target_market", "product_type", "business_model"]
+                  default: ["vertical", "size"]
+                  description: Criteria to use for finding similar merchants
+                exclude_competitors:
+                  type: boolean
+                  default: false
+                  description: Whether to exclude direct competitors
+                limit:
+                  type: integer
+                  minimum: 1
+                  maximum: 30
+                  default: 15
+                  description: Maximum number of similar merchants to return
+      responses:
+        '200':
+          description: List of similar merchants found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  similar_merchants:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/SimilarMerchant'
+                  reference_analysis:
+                    $ref: '#/components/schemas/MerchantProfile'
+                  similarity_score_explanation:
+                    type: string
+                    description: Explanation of how similarity was determined
+
+components:
+  schemas:
+    MerchantInfo:
+      type: object
+      required:
+        - name
+        - website
+      properties:
+        name:
+          type: string
+          description: Official merchant name
+        website:
+          type: string
+          format: uri
+          description: Primary website URL
+        vertical:
+          type: string
+          description: Business vertical or industry
+        estimated_size:
+          type: string
+          enum: ["enterprise", "large", "medium", "small", "unknown"]
+        location:
+          type: object
+          properties:
+            country:
+              type: string
+            region:
+              type: string
+        description:
+          type: string
+          description: Brief description of the merchant's business
+
+    VerifiedMerchant:
+      allOf:
+        - $ref: '#/components/schemas/MerchantInfo'
+        - type: object
+          required:
+            - shopify_status
+            - verification_source
+          properties:
+            shopify_status:
+              type: string
+              enum: ["shopify", "shopify_plus"]
+              description: Confirmed Shopify usage level
+            verification_source:
+              type: string
+              format: uri
+              description: Public source URL confirming Shopify usage
+            shopify_pos:
+              type: boolean
+              description: Whether merchant uses Shopify POS
+            verification_date:
+              type: string
+              format: date
+              description: Date when verification was confirmed
+            additional_sources:
+              type: array
+              items:
+                type: string
+                format: uri
+              description: Additional verification sources
+
+    InferredMerchant:
+      allOf:
+        - $ref: '#/components/schemas/MerchantInfo'
+        - type: object
+          required:
+            - inference_confidence
+            - inference_reasons
+          properties:
+            inference_confidence:
+              type: string
+              enum: ["high", "medium", "low"]
+              description: Confidence level of Shopify usage inference
+            inference_reasons:
+              type: array
+              items:
+                type: string
+              description: Reasons supporting the Shopify inference
+              examples: [["Shopify-style checkout URL", "myshopify.com subdomain detected", "Shopify app integrations found"]]
+            shopify_pos:
+              type: boolean
+              description: Inferred Shopify POS usage
+            supporting_urls:
+              type: array
+              items:
+                type: string
+                format: uri
+              description: URLs supporting the inference
+
+    NonShopifyMerchant:
+      allOf:
+        - $ref: '#/components/schemas/MerchantInfo'
+        - type: object
+          properties:
+            detected_platform:
+              type: string
+              description: The e-commerce platform actually being used
+            confidence:
+              type: string
+              enum: ["confirmed", "likely", "unknown"]
+
+    WebsiteAnalysis:
+      type: object
+      required:
+        - website_url
+        - shopify_detected
+        - analysis_timestamp
+      properties:
+        website_url:
+          type: string
+          format: uri
+        shopify_detected:
+          type: boolean
+          description: Whether Shopify usage was detected
+        shopify_confidence:
+          type: string
+          enum: ["confirmed", "high", "medium", "low", "none"]
+        shopify_type:
+          type: string
+          enum: ["shopify", "shopify_plus", "unknown"]
+          description: Type of Shopify plan detected
+        shopify_pos:
+          type: boolean
+          description: Shopify POS usage detected
+        detection_indicators:
+          type: array
+          items:
+            type: object
+            properties:
+              indicator:
+                type: string
+                description: Type of indicator found
+              value:
+                type: string
+                description: Specific value or evidence
+              confidence:
+                type: string
+                enum: ["high", "medium", "low"]
+        alternative_platform:
+          type: string
+          description: Alternative e-commerce platform detected (if not Shopify)
+        merchant_profile:
+          $ref: '#/components/schemas/MerchantProfile'
+        analysis_timestamp:
+          type: string
+          format: date-time
+
+    MerchantProfile:
+      type: object
+      properties:
+        business_name:
+          type: string
+        vertical:
+          type: string
+        target_market:
+          type: string
+        estimated_revenue:
+          type: string
+        product_categories:
+          type: array
+          items:
+            type: string
+        business_model:
+          type: string
+          enum: ["b2c", "b2b", "marketplace", "subscription", "mixed"]
+        geographic_focus:
+          type: array
+          items:
+            type: string
+
+    SimilarMerchant:
+      allOf:
+        - $ref: '#/components/schemas/MerchantInfo'
+        - type: object
+          properties:
+            similarity_score:
+              type: number
+              minimum: 0
+              maximum: 1
+              description: Similarity score compared to reference merchant
+            matching_criteria:
+              type: array
+              items:
+                type: string
+              description: Criteria that matched with reference merchant
+            shopify_status:
+              type: string
+              enum: ["verified", "inferred", "unknown", "non_shopify"]
+            verification_source:
+              type: string
+              format: uri
+              description: Source for Shopify verification (if available)
+
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-API-Key
+      description: API key for merchant analysis tools
+
+security:
+  - ApiKeyAuth: []
